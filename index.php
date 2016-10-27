@@ -8,6 +8,14 @@ if(isset($_POST['go'])){
 
 	$file = $_FILES["csv"]["tmp_name"];
 
+	$days = $_POST['days'];
+
+	$date = date('Y-m-d');
+
+	$date2 = date('Y-m-d', strtotime($date . '- ' . $days . ' days'));
+
+	$str = strtotime($date2);
+
 	if(($handle = fopen($file, "r")) !== FALSE){
 
 		while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
@@ -22,7 +30,13 @@ if(isset($_POST['go'])){
 
 			$details = json_decode($response);
 
-			echo $details->{"active"};
+
+			if(strtotime($details->{"active"}) > $str){
+
+				echo $data[0] . '<br>';
+			}
+
+
 
    		}
 
@@ -35,9 +49,9 @@ if(isset($_POST['go'])){
 
 <form method="post" enctype="multipart/form-data">
 
-<input type="file" name="csv"><br><br>
+<input type="file" name="csv" required=""><br><br>
 
-<input type="text" name="days" placeholder="enter the number of days"><br><br>
+<input type="text" name="days" placeholder="enter the number of days" required=""><br><br>
 
 <input type="submit" name="go" value="go">
 
