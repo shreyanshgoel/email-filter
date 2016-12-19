@@ -7,14 +7,14 @@
  */
 use Shared\Controller as Controller;
 use Framework\RequestMethods as RequestMethods;
-use Curl\Curl as Curl;
+use Shared\Mail as Mail;
 
 class Home extends Controller {
 
     public function index() {
+
     	$layoutView = $this->getLayoutView();
     	$layoutView->set("seo", Framework\Registry::get("seo"));
-
 
 		if(RequestMethods::post('go')){
 
@@ -22,63 +22,57 @@ class Home extends Controller {
 
 		    $days = RequestMethods::post('days');
 
-		    $date = date('Y-m-d');
+		    $email = RequestMethods::post('email');
 
-		    $date2 = date('Y-m-d', strtotime($date . '- ' . $days . ' days'));
+		    $name = uniqid();
 
-		    $str = strtotime($date2);
+		    $task = new models\Task(array(
+		    	'email' => $email,
+		    	'days' => $days,
+		    	'csv' => $name,
+                'live' => 1
+		    	));
 
-		    $content = '';
+		    if($file){
+		    	$img = $this->_upload('csv', 'logo', ['extension' => 'csv', 'name' => $name, 'size' => '6000000']);
 
-		    if(($handle = fopen($file, "r")) !== FALSE){
+                if($img){
 
-		        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-		            
-		            $curl = new Curl();
-		            
-		            $curl->setHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36');
-		            
-		            $response = $curl->get('http://api.madapi.xyz/?q=' . $data[0]);
-		            
-		            $curl->close();
+                	$task->save();
+                    echo "<script>alert('task is scheduled')</script>";
 
-		            $details = json_decode($response);
-
-
-		            if(strtotime($details->{"active"}) > $str){
-
-		                $content.= $data[0] . '
-';
-		            }
-
-
-
-		        }
-
-		        fclose($handle);
-
-		    }
-
-		    if(!empty($content)){
-
-		        $this->download($content);
-		    }
+                }
+            }
 		}
     }
 
-    protected function download($c = ''){
+    public function test(){
 
-    	$this->noview();
+        $task = models\Task::all();
 
-    	header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-disposition: attachment; filename=filter.txt');
-        header('Content-Length: '.strlen($c));
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-        header('Expires: 0');
-        header('Pragma: public');
-        echo $c;
-        exit;
+        foreach ($task as $key => $value) {
+            echo $value->email;
+        }
+    }
+
+    public function install(){
+        $models = Shared\Markup::models();
+        foreach($models as $key => $value){
+            $this->sync($value);
+        }
+    }
+    public function sync($model){
+        try {
+            $this->noview();
+            $db = Framework\Registry::get("database");
+            
+            $model = "models\\" . $model; 
+            $model = new $model;
+            $db->sync($model);
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+        }
+        
     }
 
 }

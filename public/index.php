@@ -1,19 +1,15 @@
 <?php
 ob_start();
-define("DEBUG", TRUE);
-
-// 1. define the default path for includes
-define("APP_PATH", str_replace(DIRECTORY_SEPARATOR, "/", dirname(__FILE__)));
-define("URL", "http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
-define("CDN", "/public/assets/");
-
-date_default_timezone_set('Asia/Kolkata');
+define("DEBUG", true);
+define("APP_PATH", str_replace(DIRECTORY_SEPARATOR, "/", dirname(dirname(__FILE__))));
+define("URL", "http://". $_SERVER['HTTP_HOST']. $_SERVER['REQUEST_URI']);
+define("CDN", "//". $_SERVER['HTTP_HOST'] . "/assets/");
 
 try {
-    
+
     // library's class autoloader
-    spl_autoload_register(function($class) {
-        $path = str_replace("\\", DIRECTORY_SEPARATOR, $class);
+    spl_autoload_register(function ($classname) {
+        $path = str_replace("\\", DIRECTORY_SEPARATOR, $classname);
         $file = APP_PATH . "/application/libraries/{$path}.php";
 
         if (file_exists($file)) {
@@ -22,8 +18,20 @@ try {
         }
     });
 
+    if (!function_exists('getallheaders')) { 
+        function getallheaders() { 
+            $headers = ''; 
+            foreach ($_SERVER as $name => $value) { 
+               if (substr($name, 0, 5) == 'HTTP_') { 
+                   $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value; 
+               }
+           }
+           return $headers;
+        }
+    }
+
     // 2. load the Core class that includes an autoloader
-    require("framework/core.php");
+    require_once(APP_PATH. "/framework/core.php");
     Framework\Core::initialize();
 
     // plugins
@@ -54,7 +62,7 @@ try {
     $session = new Framework\Session();
     Framework\Registry::set("session", $session->initialize());
     
-    // 7. load the Router class and provide the url + extension
+    /// 7. load the Router class and provide the url + extension
     $router = new Framework\Router(array(
         "url" => isset($_GET["url"]) ? $_GET["url"] : "home/index",
         "extension" => !empty($_GET["extension"]) ? $_GET["extension"] : "html"

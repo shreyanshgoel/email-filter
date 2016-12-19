@@ -8,6 +8,8 @@
 use Shared\Utils;
 use Framework\{Registry, ArrayMethods, RequestMethods};
 use Shared\Services\{Db, User as Usr, Performance as Perf};
+use Shared\Mail as Mail;
+use Curl\Curl as Curl;
 
 class Cron extends Shared\Controller {
 
@@ -20,6 +22,7 @@ class Cron extends Shared\Controller {
     }
 
     public function index($type = "daily") {
+
         switch ($type) {
             case 'minutely':
                 $this->_minutely();
@@ -65,12 +68,78 @@ class Cron extends Shared\Controller {
 
     protected function _daily() {
         $this->log("CRON Started");
-        $this->log('Starting Memory at: ' . memory_get_usage());
+        $this->filter();
+        $this->log("CRON ended");
+    }
 
-        $this->_performance();
-        $this->log('Peak Memory at: ' . memory_get_peak_usage());
-        $this->_invoice();
-        $this->_rssFeed();
+    protected function filter(){
+
+        $tasks = models\Task::all([
+            'live = ?' => 1
+            ]);
+
+        foreach ($tasks as $t) {
+
+            $t->live = 0;
+            $t->save();
+
+            $date = $t->created;
+
+            $date2 = date('Y-m-d', strtotime($date . '- ' . $t->days . ' days'));
+
+            $str = strtotime($date2);
+
+            $file = APP_PATH . '/public/uploads/' . $t->csv . '.csv';
+
+            $content = '';
+
+            if(($handle = fopen($file, "r")) !== FALSE){
+
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                        
+                     $curl = new Curl();
+                        
+                     $curl->setHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36');
+                        
+                     $response = $curl->get('http://api.madapi.xyz/?q=' . $data[0]);
+                        
+                     $curl->close();
+
+                     $details = json_decode($response);
+
+
+                     if(strtotime($details->{"active"}) > $str){
+
+                         $content.= $data[0] . '
+';
+                     }
+
+                 }
+
+                 fclose($handle);
+
+             }
+
+             if(!empty($content)){
+
+                $to = $t->email;
+                $subject = "Filtered Emails";
+
+                $m = Mail::send([
+                    'to' => $to,
+                    'subject' => $subject,
+                    'body' => $content
+                    ]);
+
+             }
+
+            unlink($file);
+
+            $t->status = 1;
+            $t->save();
+
+        }
+
 
     }
 

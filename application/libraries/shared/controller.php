@@ -62,6 +62,8 @@ class Controller extends \Framework\Controller {
         $database = Registry::get("database");
         $database->connect();
 
+        require 'vendor/autoload.php';
+
         // schedule: load user from session           
         Events::add("framework.router.beforehooks.before", function($name, $parameters) {
             $session = Registry::get("session");
@@ -87,6 +89,66 @@ class Controller extends \Framework\Controller {
             $database->disconnect();
         });
     }
+
+    /**
+     * The method checks whether a file has been uploaded. If it has, the method attempts to move the file to a permanent location.
+     * @param string $name
+     * @param string $type files or images
+     */
+    protected function _upload($name, $type = "images", $opts = []) {
+        if (isset($_FILES[$name])) {
+
+            $file = $_FILES[$name];
+            $path = APP_PATH . "/public/uploads/";
+            $extension = pathinfo($file["name"], PATHINFO_EXTENSION);
+            $size = $file["size"];
+
+            if (isset($opts['extension'])) {
+                $ex = $opts['extension'];
+
+                if (!preg_match("/^".$ex."$/", $extension)) {
+                    echo "extension doesnt match";
+                    return false;
+                }
+            }
+
+             if (isset($opts['size'])) {
+                $s = $opts['size'];
+
+                if ($size > $s) {
+                    echo "size is big";
+                    return false;
+                }
+            }
+
+            if (isset($opts['name'])) {
+                $filename = $opts['name'] . ".{$extension}";
+            } else {
+                $filename = uniqid() . ".{$extension}";
+            }
+
+            if(move_uploaded_file($file["tmp_name"], $path . $filename)){
+
+                return $extension;
+            }
+        }
+        echo "something went wrong";
+        return FALSE;
+    }
+
+    protected function log($message = "") {
+            $logfile = APP_PATH . "/logs/" . date("Y-m-d") . ".txt";
+            $new = file_exists($logfile) ? false : true;
+            if ($handle = fopen($logfile, 'a')) {
+                $timestamp = strftime("%Y-%m-%d %H:%M:%S", time());
+                $content = "[{$timestamp}]{$message}\n";
+                fwrite($handle, $content);
+                fclose($handle);
+                if ($new) {
+                    chmod($logfile, 0777);
+                }
+            }
+        }
 
     /**
      * Checks whether the user is set and then assign it to both the layout and action views.

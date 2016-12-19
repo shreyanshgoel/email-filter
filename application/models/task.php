@@ -5,8 +5,8 @@
  *
  * @author Shreyansh Goel
  */
-namespace Models;
-class Task extends Shared\Model {
+namespace models;
+class Task extends \Shared\Model {
 
     /**
      * @column
@@ -29,5 +29,23 @@ class Task extends Shared\Model {
      * @label first name
      */
     protected $_csv;
+
+    /**
+     * @column
+     * @readwrite
+     * @type text
+     * @length 100
+     * 
+     * @validate required
+     * @label first name
+     */
+    protected $_days;
+
+    /**
+     * @column
+     * @readwrite
+     * @type boolean
+     */
+    protected $_status = 0;
 
 }
